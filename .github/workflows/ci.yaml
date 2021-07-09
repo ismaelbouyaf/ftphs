@@ -1,0 +1,43 @@
+name: build
+on: [push]
+jobs:
+  build:
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        ghc: ['8.6.5', '8.8.3', 'latest']
+        cabal: ['latest']
+        exclude:
+          - os: windows-latest
+            ghc: 8.8.3
+    name: ${{matrix.os}}, GHC ${{matrix.ghc}}, Cabal ${{matrix.cabal}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Haskell setup
+        uses: actions/setup-haskell@v1.1
+        with:
+          ghc-version: ${{matrix.ghc}}
+          cabal-version: ${{matrix.cabal}}
+
+      - name: Cabal cache
+        uses: actions/cache@v1
+        env:
+          cache-name: cache-cabal
+        with:
+          path: ~/.cabal
+          key: ${{runner.os}}-build-${{env.cache-name}}-${{hashFiles('**/*.cabal') }}-${{hashFiles('**/cabal.project')}}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Dependencies
+        run: |
+          cabal update
+          cabal build --only-dependencies
+
+      - name: Build
+        run: cabal build
